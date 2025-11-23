@@ -4,3 +4,5 @@ output.json
 *.tfstate.backup
 *.tfstate
 *.lock.hcl
+workspace.yml
+.DS_Store
