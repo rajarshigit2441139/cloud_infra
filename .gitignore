@@ -6,3 +6,7 @@ output.json
 *.lock.hcl
 workspace.yml
 .DS_Store
+.terraform.tfstate.lock.info
+plan.out
+t.log
+terraform.log
