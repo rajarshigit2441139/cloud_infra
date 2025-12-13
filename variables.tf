@@ -17,12 +17,12 @@ variable "vpc_parameters" {
 variable "subnet_parameters" {
   description = "Subnet parameters"
   type = map(map(object({
-    cidr_block = string
-    vpc_name   = string
-    vpc_id     = optional(string)
+    cidr_block        = string
+    vpc_name          = string
+    vpc_id            = optional(string)
     availability_zone = optional(string)
-    az_index = number
-    tags       = optional(map(string), {})
+    az_index          = number
+    tags              = optional(map(string), {})
   })))
   default = {}
 }
@@ -35,28 +35,10 @@ variable "igw_parameters" {
   type = map(map(object({
     vpc_name = string
     # vpc_id   = optional(string)
-    tags     = optional(map(string), {})
+    tags = optional(map(string), {})
   })))
   default = {}
 }
-
-
-# -------------- NAT Parameters -------------- #
-
-variable "nat_gateway_parameters" {
-  description = "Nat parameters"
-  type = map(object({
-    subnet_id                          = string
-    connectivity_type                  = optional(string) #"private"
-    secondary_private_ip_address_count = optional(number)
-    allocation_id                      = optional(string)
-    secondary_allocation_ids           = optional(list(string))
-    secondary_private_ip_addresses     = optional(list(string))
-    tags                               = optional(map(string), {})
-  }))
-  default = {}
-}
-
 
 # -------------- RT Parameters -------------- #
 
@@ -67,10 +49,11 @@ variable "rt_parameters" {
     vpc_id   = optional(string)
     tags     = optional(map(string), {})
     routes = optional(list(object({
-      cidr_block = string
-      use_igw    = optional(bool, true)
-      gateway_id = optional(string)
+      cidr_block  = string
+      target_type = string # "igw" | "nat" | "vgw" | "tgw" | etc.
+      target_key  = string # name or id
     })), [])
+
   })))
   default = {}
 }
@@ -80,6 +63,11 @@ variable "internet_gateway_ids" {
   default     = {}
 }
 
+variable "nat_gateway_ids" {
+  description = "Map of internet gateway IDs keyed by identifier"
+  type        = map(string)
+  default     = {}
+}
 
 # -------------- RT Associations Parameters -------------- #
 
@@ -117,8 +105,8 @@ variable "ipv4_ingress_rule" {
     vpc_name          = string
     sg_name           = string
     security_group_id = optional(string)
-    from_port         = number
-    to_port           = number
+    from_port         = optional(number)
+    to_port           = optional(number)
     protocol          = string
     cidr_ipv4         = optional(string) #VPC CIDR blocks can be passed here
   })))
@@ -132,7 +120,96 @@ variable "ipv4_egress_rule" {
     sg_name           = string
     security_group_id = optional(string)
     cidr_ipv4         = optional(string) #VPC CIDR blocks can be passed here or IPs: "0.0.0.0"
-    protocol          = string    
+    protocol          = string
   })))
   default = {}
 }
+
+# -------------- EIP Parameters -------------- #
+variable "eip_parameters" {
+  type = map(map(object({
+    domain                    = optional(string)
+    network_interface         = optional(string)
+    associate_with_private_ip = optional(string)
+    instance                  = optional(string)
+    public_ipv4_pool          = optional(string)
+    ipam_pool_id              = optional(string)
+    tags                      = map(string)
+  })))
+}
+
+# -------------- NAT Parameters -------------- #
+variable "nat_gateway_parameters" {
+  description = "Nat parameters"
+  type = map(map(object({
+    subnet_name                        = string
+    connectivity_type                  = optional(string) #"private"
+    secondary_private_ip_address_count = optional(number)
+    eip_name_for_allocation_id         = optional(string)
+    secondary_allocation_ids           = optional(list(string))
+    secondary_private_ip_addresses     = optional(list(string))
+    tags                               = optional(map(string), {})
+  })))
+  default = {}
+}
+
+
+# -------------- vpc_gateway_endpoint Parameters -------------- #
+variable "vpc_gateway_endpoint_parameters" {
+  type = map(map(object({
+    region            = string
+    vpc_name          = string
+    service_name      = string
+    vpc_endpoint_type = string # "Gateway" or "Interface"
+
+    # Gateway only
+    route_table_names = optional(list(string))
+
+    # Interface only
+    subnet_names         = optional(list(string))
+    security_group_names = optional(list(string))
+    private_dns_enabled  = optional(bool)
+
+    tags = optional(map(string))
+  })))
+}
+
+
+# -------------- eks_cluster Parameters -------------- #
+
+variable "eks_clusters" {
+  description = "Map of EKS cluster configurations"
+  type = map(map(object({
+    cluster_version         = string
+    vpc_name                = optional(string)
+    vpc_id                  = optional(string)
+    subnet_name             = optional(list(string))
+    subnet_ids              = optional(list(string))
+    sg_name                 = list(string)
+    endpoint_public_access  = bool
+    endpoint_private_access = bool
+    tags                    = map(string)
+  })))
+}
+
+
+# -------------- eks_nodegroup Parameters -------------- #
+
+variable "eks_nodegroups" {
+  description = "Map of nodegroup configs per environment"
+  type = map(map(map(object({
+    min_size                  = number
+    max_size                  = number
+    desired_size              = number
+    instance_types            = list(string)
+    subnet_name               = optional(list(string))
+    subnet_ids                = optional(list(string))
+    node_security_group_names = list(string)
+    tags                      = map(string)
+  }))))
+}
+
+# variable "enable_ecr_access" {
+#   type    = map(map(bool))
+#   default = false
+# }
