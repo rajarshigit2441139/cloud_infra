@@ -1,3 +1,15 @@
+variable "internet_gateway_ids" {
+  description = "Map of internet gateway IDs keyed by identifier"
+  type        = map(string)
+  default     = {}
+}
+
+variable "nat_gateway_ids" {
+  description = "Map of internet gateway IDs keyed by identifier"
+  type        = map(string)
+  default     = {}
+}
+
 variable "rt_parameters" {
   description = "Route table parameters"
   type = map(object({
@@ -5,16 +17,11 @@ variable "rt_parameters" {
     vpc_id   = optional(string)
     tags     = optional(map(string), {})
     routes = optional(list(object({
-      cidr_block = string
-      use_igw    = optional(bool, true)
-      gateway_id = string
+      cidr_block  = string
+      target_type = string # "igw" | "nat" | "vgw" | "tgw" | etc.
+      target_key  = string # name or id
     })), [])
+
   }))
   default = {}
-}
-
-variable "internet_gateway_ids" {
-  description = "Map of internet gateway IDs keyed by identifier"
-  type        = map(string)
-  default     = {}
 }
