@@ -14,13 +14,15 @@ variable "security_group_parameters" {
 variable "ipv4_ingress_rule" {
   description = "IPv4 ingress rule parameters"
   type = map(object({
-    vpc_name          = string
-    sg_name           = string
-    security_group_id = string
-    from_port         = number
-    to_port           = number
-    protocol          = string
-    cidr_ipv4         = string #VPC CIDR blocks can be passed here
+    vpc_name                     = string
+    sg_name                      = string
+    security_group_id            = string
+    from_port                    = number
+    to_port                      = number
+    protocol                     = string
+    cidr_ipv4                    = string #VPC CIDR blocks can be passed here
+    source_security_group_id     = optional(string)
+    referenced_security_group_id = optional(string)
   }))
   default = {}
 }
@@ -40,11 +42,13 @@ variable "ipv6_ingress_rule" {
 variable "ipv4_egress_rule" {
   description = "IPv4 engress rule parameters"
   type = map(object({
-    vpc_name          = string
-    sg_name           = string
-    security_group_id = string
-    protocol          = string
-    cidr_ipv4         = string #VPC CIDR blocks can be passed here
+    vpc_name                     = string
+    sg_name                      = string
+    security_group_id            = string
+    protocol                     = string
+    cidr_ipv4                    = string #VPC CIDR blocks can be passed here
+    source_security_group_id     = optional(string)
+    referenced_security_group_id = optional(string)
   }))
   default = {}
 }
