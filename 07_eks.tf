@@ -1,0 +1,135 @@
+locals {
+  # Workspace selection
+  cluster_config   = lookup(var.eks_clusters, terraform.workspace, {})
+  nodegroup_config = lookup(var.eks_nodegroups, terraform.workspace, {})
+
+  # Transform cluster configs by injecting vpc_id + subnet_ids
+  generated_cluster_config = {
+    for cluster_name, cluster in local.cluster_config :
+    cluster_name => merge(
+      cluster,
+      {
+        vpc_id = local.vpc_id_by_name[cluster.vpc_name]
+
+        subnet_ids = [
+          for subnet_name in cluster.subnet_name :
+          local.subnet_id_by_name[subnet_name]
+        ]
+
+        # Inject SG IDs using your prepared local map
+        security_group_ids = [
+          for sg_name in cluster.sg_name :
+          local.sgs_id_by_name[sg_name]
+        ]
+      }
+    )
+  }
+}
+
+
+# -----------------------------
+#   EKS CLUSTER (per workspace)
+# -----------------------------
+module "eks_cluster" {
+  source = "./modules/aws/eks_mng/eks_cluster"
+
+  for_each = local.generated_cluster_config
+
+  eks_clusters = {
+    (each.key) = each.value
+  }
+
+  depends_on = [
+    module.chat_app_subnet,
+    module.chat_app_security_group,
+    module.chat_app_security_rules,
+    module.chat_app_vpc_endpoint
+  ]
+}
+
+
+# -----------------------------------------
+#   NODEGROUPS (per cluster per workspace)
+# -----------------------------------------
+
+
+locals {
+  # Get workspace-specific nodegroup config
+  ws_nodegroup_config = lookup(var.eks_nodegroups, terraform.workspace, {})
+
+  generated_nodegroup_config = {
+    for cluster_name, ngroups in local.ws_nodegroup_config :
+    cluster_name => {
+      for ng_name, ng in ngroups :
+      ng_name => merge(
+        ng,
+        {
+          subnet_ids = [
+            for sn in ng.subnet_name :
+            local.subnet_id_by_name[sn]
+          ]
+
+          node_security_group_ids = [
+            for node_security_group_names in ng.node_security_group_names :
+            local.sgs_id_by_name[node_security_group_names]
+          ]
+        }
+      )
+    }
+  }
+}
+
+module "eks_nodegroups" {
+  for_each = local.generated_nodegroup_config
+
+  source = "./modules/aws/eks_mng/eks_nodegroups"
+
+  cluster_name = module.eks_cluster[each.key].eks_clusters[each.key].cluster_name
+
+  nodegroup_parameters = each.value
+
+  depends_on = [module.eks_cluster, module.chat_app_security_group, module.chat_app_security_rules]
+}
+
+
+
+# -----------------------------------------
+#   NODEGROUPS (per cluster per workspace)
+# -----------------------------------------
+
+# locals {
+#   generated_nodegroup_config = {
+#     for cluster_name, ngroups in local.nodegroup_config :
+#     cluster_name => {
+#       for ng_name, ng in ngroups :
+#       ng_name => merge(
+#         ng,
+#         {
+#           subnet_ids = [
+#             for sn in ng.subnet_name :
+#             local.subnet_id_by_name[sn]
+#           ]
+
+#           node_security_group_ids = [
+#             for node_security_group_names in ng.node_security_group_names :
+#             local.sgs_id_by_name[node_security_group_names]
+#           ]
+#         }
+#       )
+#     }
+#   }
+# }
+
+# module "eks_nodegroups" {
+#   for_each = local.cluster_config
+
+#   source = "./modules/aws/eks_mng/eks_nodegroups"
+
+#   #   cluster_name = module.eks_cluster[each.key].cluster_name
+#   cluster_name = module.eks_cluster[each.key].eks_clusters[each.key].cluster_name
+
+
+#   nodegroup_parameters = lookup(local.generated_nodegroup_config, each.key, {})
+
+#   depends_on = [module.eks_cluster, module.chat_app_security_group, module.chat_app_security_rules]
+# }
