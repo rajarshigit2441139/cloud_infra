@@ -102,13 +102,14 @@ variable "security_group_parameters" {
 variable "ipv4_ingress_rule" {
   description = "IPv4 ingress rule parameters"
   type = map(map(object({
-    vpc_name          = string
-    sg_name           = string
-    security_group_id = optional(string)
-    from_port         = optional(number)
-    to_port           = optional(number)
-    protocol          = string
-    cidr_ipv4         = optional(string) #VPC CIDR blocks can be passed here
+    vpc_name                   = string
+    sg_name                    = string
+    security_group_id          = optional(string)
+    from_port                  = optional(number)
+    to_port                    = optional(number)
+    protocol                   = string
+    source_security_group_name = optional(string)
+    cidr_ipv4                  = optional(string) #VPC CIDR blocks can be passed here
   })))
   default = {}
 }
@@ -116,11 +117,12 @@ variable "ipv4_ingress_rule" {
 variable "ipv4_egress_rule" {
   description = "IPv4 engress rule parameters"
   type = map(map(object({
-    vpc_name          = string
-    sg_name           = string
-    security_group_id = optional(string)
-    cidr_ipv4         = optional(string) #VPC CIDR blocks can be passed here or IPs: "0.0.0.0"
-    protocol          = string
+    vpc_name                   = string
+    sg_name                    = string
+    security_group_id          = optional(string)
+    source_security_group_name = optional(string)
+    cidr_ipv4                  = optional(string) #VPC CIDR blocks can be passed here or IPs: "0.0.0.0"
+    protocol                   = string
   })))
   default = {}
 }
@@ -201,7 +203,8 @@ variable "eks_nodegroups" {
     min_size                  = number
     max_size                  = number
     desired_size              = number
-    instance_types            = list(string)
+    instance_types            = string
+    instance_ami              = string
     subnet_name               = optional(list(string))
     subnet_ids                = optional(list(string))
     node_security_group_names = list(string)
