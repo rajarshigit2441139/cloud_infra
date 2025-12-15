@@ -8,7 +8,8 @@ variable "nodegroup_parameters" {
     min_size                = number
     max_size                = number
     desired_size            = number
-    instance_types          = list(string)
+    instance_types          = string
+    instance_ami            = string
     subnet_ids              = list(string)
     node_security_group_ids = list(string)
     tags                    = map(string)

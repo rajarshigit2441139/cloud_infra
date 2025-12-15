@@ -261,22 +261,14 @@ resource "aws_iam_role_policy_attachment" "custom" {
   policy_arn = aws_iam_policy.custom[each.value.policy].arn
 }
 
-# # Create LT per nodegroup with YOUR SG
-# resource "aws_launch_template" "ng_lt" {
-#   for_each = var.nodegroup_parameters
-
-#   name_prefix = "${each.key}-lt"
-
-#   network_interfaces {
-#     security_groups = each.value.node_security_group_ids # << YOUR SG PASSED FROM ROOT
-#   }
-# }
 
 # Create LT per nodegroup with YOUR SG
 resource "aws_launch_template" "ng_lt" {
   for_each = var.nodegroup_parameters
 
   name_prefix            = "${each.key}-lt"
+  image_id               = each.value.instance_ami
+  instance_type          = each.value.instance_types
   vpc_security_group_ids = each.value.node_security_group_ids # << YOUR SG PASSED FROM ROOT
 
   tag_specifications {
@@ -313,8 +305,6 @@ resource "aws_eks_node_group" "nodegroup" {
     max_size     = each.value.max_size
     desired_size = each.value.desired_size
   }
-
-  instance_types = each.value.instance_types
 
   tags = merge(each.value.tags, {
     Name : each.key
