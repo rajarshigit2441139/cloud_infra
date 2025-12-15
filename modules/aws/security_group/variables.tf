@@ -20,11 +20,17 @@ variable "ipv4_ingress_rule" {
     from_port                    = number
     to_port                      = number
     protocol                     = string
-    cidr_ipv4                    = string #VPC CIDR blocks can be passed here
+    cidr_ipv4                    = optional(string) #VPC CIDR blocks can be passed here
     source_security_group_id     = optional(string)
     referenced_security_group_id = optional(string)
   }))
   default = {}
+}
+
+variable "sg_name_to_id_map" {
+  description = "Optional map from security group name (as used in rules) to security group id created by another module"
+  type        = map(string)
+  default     = {}
 }
 
 variable "ipv6_ingress_rule" {
@@ -46,7 +52,7 @@ variable "ipv4_egress_rule" {
     sg_name                      = string
     security_group_id            = string
     protocol                     = string
-    cidr_ipv4                    = string #VPC CIDR blocks can be passed here
+    cidr_ipv4                    = optional(string) #VPC CIDR blocks can be passed here
     source_security_group_id     = optional(string)
     referenced_security_group_id = optional(string)
   }))
