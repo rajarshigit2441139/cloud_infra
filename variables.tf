@@ -187,12 +187,40 @@ variable "eks_clusters" {
     vpc_id                  = optional(string)
     subnet_name             = optional(list(string))
     subnet_ids              = optional(list(string))
-    sg_name                 = list(string)
+    sg_name                 = optional(list(string))
     endpoint_public_access  = bool
     endpoint_private_access = bool
     tags                    = map(string)
   })))
 }
+
+variable "eks_cluster_sg_ingress" {
+  type = map(map(object({
+    ingress = list(object({
+      source_sg_names = optional(list(string))
+      cidr_ipv4       = optional(string)
+      protocol        = string
+      from_port       = number
+      to_port         = number
+    }))
+  })))
+}
+
+variable "eks_cluster_sg_egress" {
+  type = map(map(object({
+    cluster_to_node = list(object({
+      target_sg_names = optional(list(string))
+      cidr_ipv4       = optional(string)
+      protocol        = string
+      from_port       = number
+      to_port         = number
+    }))
+  })))
+}
+
+
+
+
 
 
 # -------------- eks_nodegroup Parameters -------------- #
@@ -200,11 +228,13 @@ variable "eks_clusters" {
 variable "eks_nodegroups" {
   description = "Map of nodegroup configs per environment"
   type = map(map(map(object({
+    k8s_version               = optional(string)
+    arch                      = optional(string)
     min_size                  = number
     max_size                  = number
     desired_size              = number
     instance_types            = string
-    instance_ami              = string
+    instance_ami              = optional(string)
     subnet_name               = optional(list(string))
     subnet_ids                = optional(list(string))
     node_security_group_names = list(string)

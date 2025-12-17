@@ -26,7 +26,6 @@ locals {
   }
 }
 
-
 # -----------------------------
 #   EKS CLUSTER (per workspace)
 # -----------------------------
@@ -48,15 +47,182 @@ module "eks_cluster" {
 }
 
 
+# -----------------------------
+#   EKS CLUSTER NETWORK
+# -----------------------------
+
+locals {
+  ws_eks_cluster_sg_egress = lookup(
+    var.eks_cluster_sg_egress,
+    terraform.workspace,
+    {}
+  )
+}
+
+resource "aws_vpc_security_group_ingress_rule" "eks_cluster_sg_egress" {
+  for_each = {
+    for r in local.eks_cluster_sg_egress :
+    "${r.cluster_name}/${r.sg_name}/${r.ip_protocol}/${r.from_port}" => r
+  }
+
+  # Resolve SG ID here 
+  security_group_id = local.sgs_id_by_name[each.value.sg_name]
+
+  ip_protocol = each.value.ip_protocol
+  from_port   = each.value.from_port
+  to_port     = each.value.to_port
+
+  referenced_security_group_id = module.eks_cluster[each.value.cluster_name].eks_clusters[each.value.cluster_name].cluster_primary_security_group_id
+
+  depends_on = [
+    module.eks_cluster
+  ]
+}
+
+locals {
+  ws_eks_cluster_sg_ingress = lookup(
+    var.eks_cluster_sg_ingress,
+    terraform.workspace,
+    {}
+  )
+}
+
+locals {
+  eks_cluster_ingress_rules = flatten([
+    for cluster_name, cluster_rules in local.ws_eks_cluster_sg_ingress : [
+      for rule in cluster_rules.ingress :
+      rule.source_sg_names != null ?
+      [
+        for sg_name in rule.source_sg_names : {
+          cluster_name = cluster_name
+          sg_name      = sg_name
+          cidr_ipv4    = null
+          ip_protocol  = rule.protocol
+          from_port    = rule.from_port
+          to_port      = rule.to_port
+        }
+      ] :
+      [{
+        cluster_name = cluster_name
+        sg_name      = null
+        cidr_ipv4    = rule.cidr_ipv4
+        ip_protocol  = rule.protocol
+        from_port    = rule.from_port
+        to_port      = rule.to_port
+      }]
+    ]
+  ])
+}
+
+locals {
+  eks_cluster_sg_egress = flatten([
+    for cluster_name, cluster_rules in local.ws_eks_cluster_sg_egress : [
+      for rule in cluster_rules.cluster_to_node :
+      rule.target_sg_names != null ?
+      [
+        for sg_name in rule.target_sg_names : {
+          cluster_name = cluster_name
+          sg_name      = sg_name
+          cidr_ipv4    = null
+          ip_protocol  = rule.protocol
+          from_port    = rule.from_port
+          to_port      = rule.to_port
+        }
+      ] :
+      [{
+        cluster_name = cluster_name
+        sg_name      = null
+        cidr_ipv4    = rule.cidr_ipv4
+        ip_protocol  = rule.protocol
+        from_port    = rule.from_port
+        to_port      = rule.to_port
+      }]
+    ]
+  ])
+}
+
+
+
+resource "aws_vpc_security_group_ingress_rule" "eks_cluster_ingress" {
+  for_each = {
+    for r in local.eks_cluster_ingress_rules :
+    "${r.cluster_name}/${coalesce(r.sg_name, r.cidr_ipv4)}/${r.from_port}" => r
+  }
+
+  security_group_id = module.eks_cluster[each.value.cluster_name].eks_clusters[each.value.cluster_name].cluster_primary_security_group_id
+
+  ip_protocol = each.value.ip_protocol
+  from_port   = each.value.from_port
+  to_port     = each.value.to_port
+
+  # CONDITIONAL (only ONE will be non-null)
+  referenced_security_group_id = each.value.sg_name != null ? local.sgs_id_by_name[each.value.sg_name] : null
+
+  cidr_ipv4 = each.value.cidr_ipv4
+
+  depends_on = [module.eks_cluster]
+}
+
+resource "aws_vpc_security_group_egress_rule" "eks_cluster_egress" {
+  for_each = {
+    for r in local.eks_cluster_sg_egress :
+    "${r.cluster_name}/${coalesce(r.sg_name, r.cidr_ipv4)}/${r.from_port}" => r
+  }
+
+  security_group_id = module.eks_cluster[each.value.cluster_name].eks_clusters[each.value.cluster_name].cluster_primary_security_group_id
+
+  ip_protocol = each.value.ip_protocol
+  from_port   = each.value.from_port
+  to_port     = each.value.to_port
+
+  referenced_security_group_id = each.value.sg_name != null ? local.sgs_id_by_name[each.value.sg_name] : null
+
+  cidr_ipv4 = each.value.cidr_ipv4
+
+  depends_on = [module.eks_cluster]
+}
+
+
+
+
 # -----------------------------------------
 #   NODEGROUPS (per cluster per workspace)
 # -----------------------------------------
-
 
 locals {
   # Get workspace-specific nodegroup config
   ws_nodegroup_config = lookup(var.eks_nodegroups, terraform.workspace, {})
 
+
+  # Flatten all nodegroups across clusters (workspace scoped)
+  flat_nodegroups = flatten([
+    for cluster_name, ngroups in local.ws_nodegroup_config : [
+      for ng_name, ng in ngroups : {
+        key          = "${cluster_name}/${ng_name}"
+        cluster_name = cluster_name
+        ng_name      = ng_name
+        config       = ng
+      }
+    ]
+  ])
+
+  flat_nodegroups_map = {
+    for ng in local.flat_nodegroups :
+    ng.key => ng.config
+  }
+}
+
+data "aws_ssm_parameter" "eks_ami" {
+  for_each = {
+    for k, ng in local.flat_nodegroups_map :
+    k => ng
+    if ng.instance_ami == ""
+  }
+
+  name = "/aws/service/eks/optimized-ami/${each.value.k8s_version}/amazon-linux-2023/${each.value.arch}/standard/recommended/image_id"
+}
+
+locals {
   generated_nodegroup_config = {
     for cluster_name, ngroups in local.ws_nodegroup_config :
     cluster_name => {
@@ -73,11 +239,19 @@ locals {
             for node_security_group_names in ng.node_security_group_names :
             local.sgs_id_by_name[node_security_group_names]
           ]
+
+          instance_ami = (
+            try(ng.instance_ami, "") != ""
+            ? ng.instance_ami
+            : data.aws_ssm_parameter.eks_ami["${cluster_name}/${ng_name}"].value
+          )
         }
       )
     }
   }
 }
+
+
 
 module "eks_nodegroups" {
   for_each = local.generated_nodegroup_config
@@ -88,48 +262,10 @@ module "eks_nodegroups" {
 
   nodegroup_parameters = each.value
 
-  depends_on = [module.eks_cluster, module.chat_app_security_group, module.chat_app_security_rules]
+  depends_on = [module.eks_cluster,
+    module.chat_app_security_group,
+    module.chat_app_security_rules,
+    aws_vpc_security_group_ingress_rule.eks_cluster_sg_egress,
+    aws_vpc_security_group_ingress_rule.eks_cluster_ingress
+  ]
 }
-
-
-
-# -----------------------------------------
-#   NODEGROUPS (per cluster per workspace)
-# -----------------------------------------
-
-# locals {
-#   generated_nodegroup_config = {
-#     for cluster_name, ngroups in local.nodegroup_config :
-#     cluster_name => {
-#       for ng_name, ng in ngroups :
-#       ng_name => merge(
-#         ng,
-#         {
-#           subnet_ids = [
-#             for sn in ng.subnet_name :
-#             local.subnet_id_by_name[sn]
-#           ]
-
-#           node_security_group_ids = [
-#             for node_security_group_names in ng.node_security_group_names :
-#             local.sgs_id_by_name[node_security_group_names]
-#           ]
-#         }
-#       )
-#     }
-#   }
-# }
-
-# module "eks_nodegroups" {
-#   for_each = local.cluster_config
-
-#   source = "./modules/aws/eks_mng/eks_nodegroups"
-
-#   #   cluster_name = module.eks_cluster[each.key].cluster_name
-#   cluster_name = module.eks_cluster[each.key].eks_clusters[each.key].cluster_name
-
-
-#   nodegroup_parameters = lookup(local.generated_nodegroup_config, each.key, {})
-
-#   depends_on = [module.eks_cluster, module.chat_app_security_group, module.chat_app_security_rules]
-# }
