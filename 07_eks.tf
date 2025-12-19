@@ -1,7 +1,7 @@
 locals {
   # Workspace selection
-  cluster_config   = lookup(var.eks_clusters, terraform.workspace, {})
-  nodegroup_config = lookup(var.eks_nodegroups, terraform.workspace, {})
+  cluster_config = lookup(var.eks_clusters, terraform.workspace, {})
+  #   nodegroup_config = lookup(var.eks_nodegroups, terraform.workspace, {})
 
   # Transform cluster configs by injecting vpc_id + subnet_ids
   generated_cluster_config = {
@@ -53,6 +53,17 @@ module "eks_cluster" {
 locals {
   # Get workspace-specific nodegroup config
   ws_nodegroup_config = lookup(var.eks_nodegroups, terraform.workspace, {})
+  # outout
+  # {
+  #   a = {
+  #     a1 = {
+  #       k8s_version    = "1.34"
+  #       arch           = "amd64"
+  #       instance_types = "t4g.small"
+  #       ...
+  #     }
+  #   }
+  # }
 
 
   # Flatten all nodegroups across clusters (workspace scoped)
@@ -66,13 +77,36 @@ locals {
       }
     ]
   ])
+  # output
+  #   flat_nodegroups = [
+  #   {
+  #     key          = "a/a1"
+  #     cluster_name = "a"
+  #     ng_name      = "a1"
+  #     config       = { ... }
+  #   }
+  # ]
+
 
   flat_nodegroups_map = {
     for ng in local.flat_nodegroups :
     ng.key => ng.config
   }
+  # output
+  #   {
+  #   "a/a1" = {
+  #     k8s_version    = "1.34"
+  #     arch           = "amd64"
+  #     instance_types = "t4g.small"
+  #     instance_ami   = "ami-06b522ad7df4f6915"
+  #     ...
+  #   }
+  # }
+
 }
 
+
+# Fetch AMI if not present
 data "aws_ssm_parameter" "eks_ami" {
   for_each = {
     for k, ng in local.flat_nodegroups_map :
@@ -93,17 +127,17 @@ locals {
         {
 
           arch = ng.arch
-
+          # subnet name to subnet id 
           subnet_ids = [
             for sn in ng.subnet_name :
             local.subnet_id_by_name[sn]
           ]
-
+          # sg name to sg id
           node_security_group_ids = [
             for node_security_group_names in ng.node_security_group_names :
             local.sgs_id_by_name[node_security_group_names]
           ]
-
+          # AMI
           instance_ami = (
             try(ng.instance_ami, "") != ""
             ? ng.instance_ami
