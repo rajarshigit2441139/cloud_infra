@@ -184,7 +184,6 @@ data "aws_iam_policy_document" "node_assume" {
       type        = "Service"
       identifiers = ["ec2.amazonaws.com"]
     }
-
     actions = ["sts:AssumeRole"]
   }
 }
@@ -299,6 +298,11 @@ resource "aws_eks_node_group" "nodegroup" {
   node_group_name = each.key
   node_role_arn   = aws_iam_role.node[each.key].arn
   subnet_ids      = each.value.subnet_ids
+
+  ami_type = (
+    each.value.arch == "arm64" ? "AL2023_ARM_64_STANDARD" : "AL2023_x86_64_STANDARD"
+  )
+
 
   scaling_config {
     min_size     = each.value.min_size

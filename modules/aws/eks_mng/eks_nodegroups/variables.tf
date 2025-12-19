@@ -8,6 +8,7 @@ variable "nodegroup_parameters" {
     min_size                = number
     max_size                = number
     desired_size            = number
+    arch                    = string
     instance_types          = string
     instance_ami            = string
     subnet_ids              = list(string)
