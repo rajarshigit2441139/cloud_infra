@@ -194,34 +194,6 @@ variable "eks_clusters" {
   })))
 }
 
-variable "eks_cluster_sg_ingress" {
-  type = map(map(object({
-    ingress = list(object({
-      source_sg_names = optional(list(string))
-      cidr_ipv4       = optional(string)
-      protocol        = string
-      from_port       = number
-      to_port         = number
-    }))
-  })))
-}
-
-variable "eks_cluster_sg_egress" {
-  type = map(map(object({
-    cluster_to_node = list(object({
-      target_sg_names = optional(list(string))
-      cidr_ipv4       = optional(string)
-      protocol        = string
-      from_port       = number
-      to_port         = number
-    }))
-  })))
-}
-
-
-
-
-
 
 # -------------- eks_nodegroup Parameters -------------- #
 
