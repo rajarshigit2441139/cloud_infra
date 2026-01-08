@@ -31,14 +31,6 @@ resource "aws_iam_role_policy_attachment" "eks_vpc_controller" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
 }
 
-# resource "aws_security_group" "cluster_sg" {
-#   for_each    = var.eks_clusters
-#   name        = "${each.key}-cluster-sg"
-#   vpc_id      = each.value.vpc_id
-#   description = "EKS cluster security group"
-#   tags        = each.value.tags
-# }
-
 resource "aws_eks_cluster" "cluster" {
   for_each = var.eks_clusters
   name     = each.key
