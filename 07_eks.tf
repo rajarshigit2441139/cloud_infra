@@ -42,7 +42,6 @@ module "eks_cluster" {
     module.chat_app_subnet,
     module.chat_app_security_group,
     module.chat_app_security_rules,
-    module.chat_app_vpc_endpoint
   ]
 }
 
@@ -163,5 +162,6 @@ module "eks_nodegroups" {
   depends_on = [module.eks_cluster,
     module.chat_app_security_group,
     module.chat_app_security_rules,
+    module.chat_app_subnet
   ]
 }
