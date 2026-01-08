@@ -38,31 +38,35 @@ subnet_parameters = {
   default = {
     #VPC1
     cad_vpc1_pub_sub1 = {
-      cidr_block = "10.10.1.0/24"
-      vpc_name   = "chat_app_dev_vpc1"
-      az_index   = 0
-      tags       = { Environment = "dev" }
+      cidr_block              = "10.10.1.0/24"
+      vpc_name                = "chat_app_dev_vpc1"
+      az_index                = 0
+      map_public_ip_on_launch = false
+      tags                    = { Environment = "dev" }
     }
 
     cad_vpc1_pub_sub2 = {
-      cidr_block = "10.10.2.0/24"
-      vpc_name   = "chat_app_dev_vpc1"
-      az_index   = 0
-      tags       = { Environment = "dev" }
+      cidr_block              = "10.10.2.0/24"
+      vpc_name                = "chat_app_dev_vpc1"
+      az_index                = 0
+      map_public_ip_on_launch = false
+      tags                    = { Environment = "dev" }
     }
 
     cad_vpc1_pri_sub1 = {
-      cidr_block = "10.10.3.0/24"
-      vpc_name   = "chat_app_dev_vpc1"
-      az_index   = 0
-      tags       = { Environment = "dev" }
+      cidr_block              = "10.10.3.0/24"
+      vpc_name                = "chat_app_dev_vpc1"
+      az_index                = 0
+      map_public_ip_on_launch = false
+      tags                    = { Environment = "dev" }
     }
 
     cad_vpc1_pri_sub2 = {
-      cidr_block = "10.10.4.0/24"
-      vpc_name   = "chat_app_dev_vpc1"
-      az_index   = 1
-      tags       = { Environment = "dev" }
+      cidr_block              = "10.10.4.0/24"
+      vpc_name                = "chat_app_dev_vpc1"
+      az_index                = 1
+      map_public_ip_on_launch = false
+      tags                    = { Environment = "dev" }
     }
   }
 }
@@ -398,7 +402,7 @@ eks_clusters = {
       vpc_name                = "chat_app_dev_vpc1"
       subnet_name             = ["cad_vpc1_pri_sub1", "cad_vpc1_pri_sub2"]
       sg_name                 = ["chat_app_dev_cluster_sg"]
-      endpoint_public_access  = false
+      endpoint_public_access  = true
       endpoint_private_access = true
 
       tags = {
@@ -407,22 +411,22 @@ eks_clusters = {
       }
     }
 
-    #   # -------------------------
-    #   # Cluster B (dev backend)
-    #   # -------------------------
-    #   b = {
-    #     cluster_version         = "1.34"
-    #     vpc_name                = "chat_app_dev_vpc1"
-    #     subnet_name             = ["cad_vpc1_pri_sub1", "cad_vpc1_pri_sub2"]
-    #     sg_name                 = ["chat_app_dev_cluster_sg"]
-    #     endpoint_public_access  = false
-    #     endpoint_private_access = true
+    # -------------------------
+    # Cluster B (dev backend)
+    # -------------------------
+    b = {
+      cluster_version         = "1.34"
+      vpc_name                = "chat_app_dev_vpc1"
+      subnet_name             = ["cad_vpc1_pri_sub1", "cad_vpc1_pri_sub2"]
+      sg_name                 = ["chat_app_dev_cluster_sg"]
+      endpoint_public_access  = false
+      endpoint_private_access = true
 
-    #     tags = {
-    #       Environment = "dev"
-    #       Cluster     = "b"
-    #     }
-    #   }
+      tags = {
+        Environment = "dev"
+        Cluster     = "b"
+      }
+    }
   }
 
   # ===============================================================
@@ -480,27 +484,29 @@ eks_nodegroups = { # variable
         node_security_group_names = ["chat_app_dev_node_sg"]
         tags                      = { Team = "a" }
       }
-      # a2 = {
-      #   min_size       = 1
-      #   max_size       = 2
-      #   desired_size   = 1
-      #   instance_types = ["t3.small"]
-      #   subnet_name    = ["cad_vpc1_pri_sub1", "cad_vpc1_pri_sub2"]
-      #   node_security_group_names = ["chat_app_dev_node_sg"]
-      #   tags           = { Team = "a" }
-      # }
+      a2 = {
+        min_size                  = 1
+        max_size                  = 2
+        desired_size              = 1
+        instance_types            = ["t3.small"]
+        subnet_name               = ["cad_vpc1_pri_sub1", "cad_vpc1_pri_sub2"]
+        node_security_group_names = ["chat_app_dev_node_sg"]
+        tags                      = { Team = "a" }
+      }
     }
 
-    # b = {
-    #   b1 = {
-    #     min_size       = 1
-    #     max_size       = 2
-    #     desired_size   = 1
-    #     instance_types = ["t3.small"]
-    #     subnet_name    = ["cad_vpc1_pri_sub1", "cad_vpc1_pri_sub2"]
-    #     node_security_group_names = ["chat_app_dev_node_sg"]
-    #     tags           = { Team = "b" }
-    #   }
-    # }
+    b = {
+      b1 = {
+        k8s_version               = "1.34"
+        arch                      = "arm64"
+        min_size                  = 1
+        max_size                  = 2
+        desired_size              = 1
+        instance_types            = "t4g.small"
+        subnet_name               = ["cad_vpc1_pri_sub1", "cad_vpc1_pri_sub2"]
+        node_security_group_names = ["chat_app_dev_node_sg"]
+        tags                      = { Team = "b" }
+      }
+    }
   }
 }
