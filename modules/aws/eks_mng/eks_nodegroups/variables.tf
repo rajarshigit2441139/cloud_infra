@@ -17,11 +17,6 @@ variable "nodegroup_parameters" {
   }))
 }
 
-variable "enable_ecr_access" {
-  type    = bool
-  default = false
-}
-
 variable "additional_policies" {
 
   type = map(object({
