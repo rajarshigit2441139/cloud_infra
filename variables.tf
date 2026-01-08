@@ -17,12 +17,13 @@ variable "vpc_parameters" {
 variable "subnet_parameters" {
   description = "Subnet parameters"
   type = map(map(object({
-    cidr_block        = string
-    vpc_name          = string
-    vpc_id            = optional(string)
-    availability_zone = optional(string)
-    az_index          = number
-    tags              = optional(map(string), {})
+    cidr_block              = string
+    vpc_name                = string
+    vpc_id                  = optional(string)
+    availability_zone       = optional(string)
+    az_index                = number
+    map_public_ip_on_launch = optional(bool)
+    tags                    = optional(map(string), {})
   })))
   default = {}
 }
@@ -213,8 +214,3 @@ variable "eks_nodegroups" {
     tags                      = map(string)
   }))))
 }
-
-# variable "enable_ecr_access" {
-#   type    = map(map(bool))
-#   default = false
-# }
