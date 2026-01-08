@@ -38,10 +38,6 @@ output "sg_ids" {
   value = { for name, sgs_obj in module.chat_app_security_group.sgs : name => sgs_obj.id }
 }
 
-# output "eips" {
-#   description = "Elastic IP details for the current environment."
-#   value       = module.chat_app_eip.eips
-# }
 
 output "eips_id" {
   value = { for name, eip in module.chat_app_eip.eips : name => eip.id }
@@ -97,15 +93,6 @@ output "eks_cluster_role_arns" {
     k => lookup(mod.eks_clusters[k], "role_arn", null)
   }
 }
-
-# # Output security group IDs for clusters
-# output "eks_cluster_sg_ids" {
-#   description = "Map of cluster keys to cluster SG IDs"
-#   value = {
-#     for k, mod in module.eks_cluster :
-#     k => lookup(mod.eks_clusters[k], "sg_id", null)
-#   }
-# }
 
 # Output cluster versions
 output "eks_cluster_versions" {
